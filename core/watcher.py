@@ -4,6 +4,10 @@ from watchdog.observers.polling import PollingObserver as Observer # Swapped to 
 from watchdog.events import FileSystemEventHandler
 from core.intel_engine import IntelEngine
 
+INTEL_DIR = r"D:\symbiote\core\intelligence"
+if not os.path.exists(INTEL_DIR):
+    os.makedirs(INTEL_DIR)
+    
 intel = IntelEngine()
 WATCH_PATH = os.path.abspath("intelligence")
 
@@ -37,6 +41,9 @@ if __name__ == "__main__":
     
     # --- PRE-SCAN: Ingest existing files on startup ---
     print(">> RUNNING INITIAL SCAN...")
+    for f in os.listdir(INTEL_DIR):
+        if f.endswith(".txt") or f.endswith(".pdf"):
+            full_path = os.path.join(INTEL_DIR, f)
     for f in os.listdir(WATCH_PATH):
         if f.endswith(".txt"):
             full_path = os.path.join(WATCH_PATH, f)
