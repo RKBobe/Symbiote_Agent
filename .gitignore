@@ -1,10 +1,56 @@
-# Python
+# --- Symbiote Intelligence and Databases ---
+# This .gitignore file is used to specify files and directories that should be ignored by Git
+# when committing changes to the repository. This helps to keep the repository clean and free of
+# unnecessary files, such as temporary files, logs, and environment variable files.
+
+vector_db/
+core/vector_db/
+intelligence/
+*.sqlite3
+*.sqlite3-journal
+
+# ---Environment & Secrets---
+# Ignore environment variable files that may contain sensitive information such as API keys and database credentials.
+
+venv/
+.env
+.venv
+env/
+ENV/
+
+# ---python junk ---
+
 __pycache__/
 *.py[cod]
 *$py.class
-venv/
-.env
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
 
-# Symbiote Specific
-core/brain.db
-workspace/*/
+#--- AI/ML Specific ---
+
+.ipynb_checkpoints
+.hypothesis/
+all-MiniLM-L6-v2/
+
+#--- System and IDE ---
+
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

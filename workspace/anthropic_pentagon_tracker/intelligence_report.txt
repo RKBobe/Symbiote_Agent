@@ -1,0 +1,7 @@
+=== PROJECT INTELLIGENCE REPORT ===
+Target: Anthropic/Pentagon Connection
+
+Found 2 relevant data points:
+
+  [!] Anthropic chief back in talks with Pentagon about AI deal (Hype: 7/10)
+  [!] Dario Amodei calls OpenAI’s messaging around military deal ‘ (Hype: 7/10)

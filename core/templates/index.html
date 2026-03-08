@@ -2,182 +2,51 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SYMBIOTE_OS // Dashboard</title>
-    <style>
-        :root {
-            --bg-color: #0a0a0a;
-            --accent-color: #00ff41;
-            --text-color: #d1d1d1;
-            --card-bg: #161616;
-            --border-style: 1px solid #333;
-        }
-
-        body {
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            font-family: 'Courier New', Courier, monospace;
-            margin: 0;
-            padding: 20px;
-            display: grid;
-            grid-template-columns: 1fr 300px;
-            grid-template-rows: 1fr 250px;
-            gap: 20px;
-            height: 95vh;
-        }
-
-        /* --- Sections --- */
-        .panel {
-            background: var(--card-bg);
-            border: var(--border-style);
-            padding: 15px;
-            overflow-y: auto;
-        }
-
-        h2 {
-            color: var(--accent-color);
-            border-bottom: var(--border-style);
-            margin-top: 0;
-            font-size: 1.2rem;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-        }
-
-        /* --- Project List --- */
-        .project-item {
-            padding: 8px;
-            border-bottom: 1px solid #222;
-            display: flex;
-            justify-content: space-between;
-        }
-
-        /* --- Market Pulse --- */
-        .trend-item {
-            margin-bottom: 10px;
-            font-size: 0.9rem;
-        }
-        .trend-title { color: #888; }
-        .trend-hype { color: var(--accent-color); font-weight: bold; }
-
-        /* --- Terminal --- */
-        .terminal-container {
-            grid-column: 1 / span 2;
-            display: flex;
-            flex-direction: column;
-        }
-
-        #terminal-output {
-            flex-grow: 1;
-            background: #000;
-            padding: 10px;
-            font-size: 0.85rem;
-            color: var(--accent-color);
-            overflow-y: auto;
-            border: var(--border-style);
-            margin-bottom: 10px;
-        }
-
-        .input-line {
-            display: flex;
-            background: #000;
-            border: var(--border-style);
-        }
-
-        .prompt { color: var(--accent-color); padding: 10px; }
-
-        #terminal-input {
-            background: transparent;
-            border: none;
-            color: #fff;
-            padding: 10px;
-            width: 100%;
-            outline: none;
-            font-family: inherit;
-        }
-
-        pre { margin: 0; white-space: pre-wrap; word-wrap: break-word; }
-        .cmd-text { color: #fff; font-weight: bold; margin-top: 10px; }
-    </style>
+    <title>Symbiote OS | Command Center</title>
+    <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
 
-    <div class="panel">
-        <h2>Active Projects</h2>
-        <div id="project-list">
+    <div class="ticker-wrap">
+        <div class="ticker">
+            {% for trend, hype in trends %}
+                <span>[TREND: {{ trend }} | HYPE: {{ hype }}%]</span>
+            {% endfor %}
+            <span>SYSTEM STABLE // RKBobe AUTHORIZED // AI CORE ONLINE</span>
+        </div>
+    </div>
+
+    <div class="main-container">
+        <div class="central-hub">
+            <div class="status-container" style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px; font-size: 0.8em;">
+                <div id="status-led" class="led"></div>
+                <span id="status-text" style="letter-spacing: 1px;">AI ENGINE: INITIALIZING...</span>
+            </div>
+
+            <h3>🧠 Intelligence Retrieval (RAG)</h3>
+            <div style="display:flex; gap:10px;">
+                <input type="text" id="queryInput" placeholder="Enter intelligence query..." onkeypress="if(event.key==='Enter') askBrain()">
+                <button onclick="askBrain()">QUERY</button>
+            </div>
+            <div id="queryResponse">System initialized. Awaiting query for project workspace...</div>
+        </div>
+
+        <div class="side-panel">
+            <h3>📁 Active Projects</h3>
             {% for project in projects %}
-            <div class="project-item">
-                <span>📂 {{ project[0] }}</span>
-                <span>STATUS: ACTIVE</span>
-            </div>
-            {% else %}
-            <p>No active projects. Use 'forge.py' below.</p>
+                <div class="project-card" onclick="autoFillQuery('{{ project[0] }}')">
+                    {{ project[0] }}
+                </div>
             {% endfor %}
         </div>
-    </div>
 
-    <div class="panel">
-        <h2>Market Pulse</h2>
-        <div id="market-trends">
-            {% for trend in trends %}
-            <div class="trend-item">
-                <span class="trend-hype">[{{ trend[1] }}/10]</span>
-                <span class="trend-title">{{ trend[0] }}</span>
-            </div>
-            {% endfor %}
+        <div class="bottom-terminal">
+            <h3>📟 System Terminal</h3>
+            <div id="term-output">Symbiote OS v1.0 connected...</div>
+            <input type="text" id="term-input" placeholder="Type command..." onkeypress="if(event.key==='Enter') runCmd()">
         </div>
     </div>
 
-    <div class="panel terminal-container">
-        <h2>Neural Link / Terminal</h2>
-        <div id="terminal-output">
-            <div>Initial system check complete... Waiting for input.</div>
-        </div>
-        <div class="input-line">
-            <span class="prompt">&gt;</span>
-            <input type="text" id="terminal-input" placeholder="Enter command..." autocomplete="off">
-        </div>
-    </div>
-
-    <script>
-        const input = document.getElementById('terminal-input');
-        const output = document.getElementById('terminal-output');
-
-        async function sendCommand() {
-            const command = input.value.trim();
-            if (!command) return;
-
-            // Log command locally
-            output.innerHTML += `<div class="cmd-text">> ${command}</div>`;
-            input.value = '';
-
-            try {
-                const response = await fetch('/terminal', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ command: command })
-                });
-
-                const data = await response.json();
-                
-                if (data.output) {
-                    output.innerHTML += `<pre class="output-text">${data.output}</pre>`;
-                } else if (data.error) {
-                    output.innerHTML += `<pre class="output-text" style="color: #ff4141;">${data.error}</pre>`;
-                }
-            } catch (err) {
-                output.innerHTML += `<div style="color: #ff4141;">Connection Error: ${err}</div>`;
-            }
-
-            // Keep terminal scrolled to bottom
-            output.scrollTop = output.scrollHeight;
-        }
-
-        // Listen for Enter key
-        input.addEventListener('keypress', function (e) {
-            if (e.key === 'Enter') {
-                sendCommand();
-            }
-        });
-    </script>
+    <script src="/static/app.js"></script>
 </body>
 </html>

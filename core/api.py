@@ -1,77 +1,87 @@
-import sys
-import os
-import subprocess
-import sqlite3
-from pathlib import Path
 from fastapi import FastAPI, Request, Body
 from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from pydantic import BaseModel
+import os
 
-# --- UTF-8 Enforcement for Windows ---
-os.environ["PYTHONIOENCODING"] = "utf-8"
-os.environ["PYTHONUTF8"] = "1"
+# Import our Intelligence Engine
+from core.intel_engine import IntelEngine
 
-# --- Path Configuration ---
-# Setting absolute path to ensure DB and Templates are always found
-ROOT_DIR = Path("D:/symbiote")
-if str(ROOT_DIR) not in sys.path:
-    sys.path.insert(0, str(ROOT_DIR))
+app = FastAPI(title="Symbiote OS Intelligence Core")
 
-from core.models import SymbioteCore
+# --- MOUNT STATIC ASSETS ---
+# This allows the browser to find /static/style.css and /static/app.js
+app.mount("/static", StaticFiles(directory="core/static"), name="static")
 
-app = FastAPI(title="Symbiote_OS")
-templates = Jinja2Templates(directory=str(ROOT_DIR / "core" / "templates"))
-core = SymbioteCore()
+# --- SETUP TEMPLATES ---
+templates = Jinja2Templates(directory="core/templates")
+
+# Initialize the Intelligence Engine
+# Note: If this hangs, ensure your Gemini API Key is set in intel_engine.py
+try:
+    intel = IntelEngine()
+except Exception as e:
+    print(f"CRITICAL: IntelEngine failed to load: {e}")
+    intel = None
+
+# Mock data for the UI (Replace with your DB logic later)
+projects = [["anthropic_pentagon_tracker", "Active"], ["market_pulse_v2", "Idle"]]
+trends = [["AI_REGULATION", 85], ["QUANTUM_COMPUTING", 42], ["PENTAGON_CONTRACTS", 91]]
+
+class CommandRequest(BaseModel):
+    command: str
 
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request):
-    projects = []
-    trends = []
-    
-    try:
-        # Connect using the absolute path from our core model
-        with sqlite3.connect(core.db_path) as conn:
-            cursor = conn.cursor()
-            
-            # 1. Fetch Projects (Fixed: Removed 'path' column which caused crashes)
-            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='projects'")
-            if cursor.fetchone():
-                cursor.execute("SELECT name FROM projects ORDER BY updated_at DESC")
-                projects = cursor.fetchall()
-            
-            # 2. Fetch Trends
-            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='market_trends'")
-            if cursor.fetchone():
-                cursor.execute("SELECT trend_name, hype_level FROM market_trends ORDER BY id DESC LIMIT 10")
-                trends = cursor.fetchall()
-            
-            print(f"DEBUG: Found {len(projects)} projects and {len(trends)} trends in {core.db_path}")
-
-    except Exception as e:
-        print(f"CRITICAL UI ERROR: {e}")
-        # Keep lists empty so the page still loads but shows the error in console
-        
     return templates.TemplateResponse("index.html", {
-        "request": request,
-        "projects": projects,
+        "request": request, 
+        "projects": projects, 
         "trends": trends
     })
 
-@app.post("/terminal")
-async def terminal_input(command: str = Body(..., embed=True)):
+@app.get("/status")
+async def get_status():
+    """Returns the status of the AI Engine for the UI LED."""
+    return {"status": "online" if intel is not None else "offline"}
+
+@app.post("/query")
+async def query_intel(payload: dict = Body(...)):
+    """
+    RAG Pipeline: 
+    1. Search Vector DB 
+    2. Synthesize with Gemini
+    """
+    question = payload.get("question")
+    if not intel:
+        return {"answer": "SYSTEM ERROR: Intelligence Engine is offline."}
+    
     try:
-        # Run commands relative to the D:/symbiote root
-        # Redirecting stderr to stdout so we see errors in the browser
-        result = subprocess.check_output(
-            command, 
-            shell=True, 
-            stderr=subprocess.STDOUT, 
-            text=True,
-            cwd=str(ROOT_DIR),
-            encoding='utf-8' # Force UTF-8 for command output
-        )
-        return {"output": result}
-    except subprocess.CalledProcessError as e:
-        return {"output": e.output if e.output else "Command failed with no output."}
+        # Step 1: Retrieve context from ChromaDB
+        snippets = intel.query(question)
+        
+        # Step 2: Pass snippets + question to Gemini for a smart answer
+        answer = intel.synthesize(question, snippets)
+        
+        return {"answer": answer}
     except Exception as e:
-        return {"output": f"System Error: {str(e)}"}
+        return {"answer": f"SYNTHESIS ERROR: {str(e)}"}
+
+@app.post("/terminal")
+async def run_terminal(req: CommandRequest):
+    """Simple terminal command handler."""
+    cmd = req.command.lower()
+    
+    if cmd == "help":
+        return {"output": "Available: status, clear_cache, ingest_all, whoami"}
+    elif cmd == "whoami":
+        return {"output": "User: RKBobe | Role: System Administrator"}
+    elif cmd == "status":
+        status = "ONLINE" if intel else "OFFLINE"
+        return {"output": f"AI_CORE: {status} | DATABASE: CONNECTED"}
+    else:
+        return {"output": f"Command '{cmd}' not recognized by Symbiote Kernel."}
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="127.0.0.1", port=8000)
